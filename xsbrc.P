@@ -1,0 +1,28 @@
+%TO BE PLACED IN $HOME/.xsb
+:-import getenv/2 from machine.
+:-import atom_to_term/2 from string.
+:-import xpp_include_dir/1 from parse.
+:-setXsbPath.
+
+% Unfortunately the "feedback" stream is merged with output by default by xsb
+% Let's divert it to stderr here
+% NOTE: HARD CODING. Can't find good way to access these streams by names
+:-file_clone(2,6,_).
+
+setLibPath([D|P]):-
+    assert(library_directory(D)),
+    assert(xpp_include_dir(D)),
+    setLibPath(P).
+setLibPath([]).
+
+pathList(S,P):-
+    str_cat('[',S,T1),
+    str_cat(T1,']',T2),
+    atom_to_term(T2,P).
+
+setXsbPath:-
+    getenv('XSBLIBPATH',PathString),
+    pathList(PathString,P),
+    setLibPath(P),
+    getenv('PWD',PWD),
+    setLibPath([PWD]).

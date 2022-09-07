@@ -1,0 +1,31 @@
+# System Requirements:
+#
+# - XSB Prolog. See http://xsb.sourceforge.net
+# - C++ compiler supporting standard c++14
+#
+# Usage:
+#
+# 1. Define the following environment variables, preferably in your shell's rc
+#    file.
+#
+# 	XSBDIR		 XSB Prolog installation directory.
+# 	XSBCPPIFDIR	 Directory where you have checked out this project
+#
+# 2. Include this file in your application's makefile
+#    E.g.
+#    	include $(XSBCPPIFDIR)/Makefile.xsbcppif
+#
+# 3. Now your application Makefile will get some variables listed in the bottom
+#    paragraph of this file appended to which will help you build with xsbcppif
+#
+# 4. (Optionally) copy xsbrc.P to your $HOME/.xsb. Doing this allows you to set
+#    XSBLIBPATH envrionment variable which will be used to search the Prolog
+#    data file that you want to load using xsb2cpp interface.
+
+XSBARCH		=	`$(XSBDIR)/build/config.guess`
+XSBARCHDIR	=	$(XSBDIR)/config/$(XSBARCH)
+XSBLIBDIR	=	$(XSBARCHDIR)/bin
+
+# Following variables are appended for use by the application makefile
+CPPFLAGS	+=	-I$(XSBARCHDIR) -I$(XSBDIR)/emu -I$(XSBCPPIFDIR)
+LDFLAGS		+=	-L $(XSBLIBDIR) -lxsb -lpthread -lm -Wl,-R$(XSBLIBDIR)
