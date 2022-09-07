@@ -1,3 +1,6 @@
+ifndef _XSBCPPIF_
+_XSBCPPIF_ = 1
+
 # System Requirements:
 #
 # - XSB Prolog. See http://xsb.sourceforge.net
@@ -29,3 +32,5 @@ XSBLIBDIR	=	$(XSBARCHDIR)/bin
 # Following variables are appended for use by the application makefile
 CPPFLAGS	+=	-I$(XSBARCHDIR) -I$(XSBDIR)/emu -I$(XSBCPPIFDIR)
 LDFLAGS		+=	-L $(XSBLIBDIR) -lxsb -lpthread -lm -Wl,-R$(XSBLIBDIR)
+
+endif
