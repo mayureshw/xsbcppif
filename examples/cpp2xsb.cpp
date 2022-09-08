@@ -1,6 +1,7 @@
 using namespace std;
 
 #include "cpp2xsb.h"
+#include <iostream>
 
 
 int main()
@@ -22,4 +23,5 @@ int main()
     ofstream of("store");
     rel1.dump(of);
     rel2.dump(of);
+    cout << "Generated file: store" << endl;
 }
