@@ -1,6 +1,11 @@
 %.out:	%.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
 
-all:	xsb2cpp.out cpp2xsb.out
+BINS	=	xsb2cpp.out cpp2xsb.out
+
+all:	$(BINS)
+
+clean:
+	rm -f $(BINS)
 
 include $(XSBCPPIFDIR)/Makefile.xsbcppif
