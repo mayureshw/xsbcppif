@@ -30,7 +30,7 @@ XSBARCHDIR	=	$(XSBDIR)/config/$(XSBARCH)
 XSBLIBDIR	=	$(XSBARCHDIR)/bin
 
 # Following variables are appended for use by the application makefile
-CPPFLAGS	+=	-I$(XSBARCHDIR) -I$(XSBDIR)/emu -I$(XSBCPPIFDIR)
+CXXFLAGS	+=	-I$(XSBARCHDIR) -I$(XSBDIR)/emu -I$(XSBCPPIFDIR)
 LDFLAGS		+=	-L $(XSBLIBDIR) -lxsb -lpthread -lm -Wl,-R$(XSBLIBDIR)
 
 endif
