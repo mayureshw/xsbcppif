@@ -103,7 +103,7 @@ class PDb
     }
     void loadfile(string flnm)
     {
-        cout << "Loading file " << flnm << endl;
+        cout << "xsb2cpp: Loading file " << flnm << endl;
         string cmd = "load_dync(" + flnm + ").";
         int retval = xsb_command_string((char*)cmd.c_str());
         if ( retval ) cout << "xsb2cpp: File not found: " << flnm << endl;
