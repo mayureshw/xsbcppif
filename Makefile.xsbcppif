@@ -14,16 +14,19 @@ _XSBCPPIF_ = 1
 # 	XSBDIR		 XSB Prolog installation directory.
 # 	XSBCPPIFDIR	 Directory where you have checked out this project
 #
-# 2. Include this file in your application's makefile
+# 2. Append to LD_LIBRARY_PATH the following variable
+# 		export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$XSBDIR/config/`$XSBDIR/build/config.guess`/bin
+#
+# 3. Include this file in your application's makefile
 #    E.g.
 #    	include $(XSBCPPIFDIR)/Makefile.xsbcppif
 #
-# 3. Now your application Makefile will get some variables listed in the bottom
+# 4. Now your application Makefile will get some variables listed in the bottom
 #    paragraph of this file appended to which will help you build with xsbcppif
 #
-# 4. (Optionally) copy xsbrc.P to your $HOME/.xsb. Doing this allows you to set
-#    XSBLIBPATH envrionment variable which will be used to search the Prolog
-#    data file that you want to load using xsb2cpp interface.
+# 5. Copy xsbrc.P to your $HOME/.xsb. Doing this allows you to set XSBLIBPATH
+#    envrionment variable which will be used to search the Prolog data file
+#    that you want to load using xsb2cpp interface.
 
 XSBARCH		=	`$(XSBDIR)/build/config.guess`
 XSBARCHDIR	=	$(XSBDIR)/config/$(XSBARCH)
@@ -31,6 +34,6 @@ XSBLIBDIR	=	$(XSBARCHDIR)/bin
 
 # Following variables are appended for use by the application makefile
 CXXFLAGS	+=	-I$(XSBARCHDIR) -I$(XSBDIR)/emu -I$(XSBCPPIFDIR)
-LDFLAGS		+=	 $(XSBLIBDIR)/libxsb.so -lpthread -lm
+LDFLAGS		+=	-L$(XSBLIBDIR) -lxsb -lpthread -lm
 
 endif
