@@ -106,11 +106,7 @@ class PDb
         cout << "Loading file " << flnm << endl;
         string cmd = "load_dync(" + flnm + ").";
         int retval = xsb_command_string((char*)cmd.c_str());
-        if ( retval )
-        {
-            cout << "Error loading file " << flnm << endl;
-            exit(1);
-        }
+        if ( retval ) cout << "xsb2cpp: File not found: " << flnm << endl;
     }
     // Note: empty list [] is an atom, it won't come here
     PTerm* pt2cpp_list(prolog_term pt)
