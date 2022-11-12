@@ -101,6 +101,13 @@ class PDb
     {
         xsb_close();
     }
+    void consult(string modulename)
+    {
+        cout << "xsb2cpp: Consulting module " << modulename << endl;
+        string cmd = "[" + modulename + "].";
+        int retval = xsb_command_string((char*)cmd.c_str());
+        if ( retval ) cout << "xsb2cpp: Module consult failed : " << modulename << endl;
+    }
     void loadfile(string flnm)
     {
         cout << "xsb2cpp: Loading file " << flnm << endl;
@@ -187,6 +194,13 @@ public:
     {
         initxsb();
         loadfile(flnm);
+        for(auto ps:pspecs) loadpred(ps);
+        closexsb();
+    }
+    void call(string modulename, vector<t_predspec> pspecs)
+    {
+        initxsb();
+        consult(modulename);
         for(auto ps:pspecs) loadpred(ps);
         closexsb();
     }

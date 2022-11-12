@@ -16,6 +16,9 @@ Currently a limited goal of this component is to:
    can be loaded using load_dync interface in XSB prolog.) and access each fact
    as a C++ object.
 
+3. Be able to consult a Prolog module and invoke a list of predicates from it
+   and load the results. Currently the query arguments cannot be bound.
+
 If you wish to do something more, consider using XSB's native C language
 interface.
 
