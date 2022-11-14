@@ -178,6 +178,64 @@ class PDb
         cout << "Got " << _termmap[ps].size() << " entries" << endl;
     }
 public:
+    template<typename T> T term2val(PTerm* t)
+    {
+        if ( not t->isAtom() )
+        {
+            cout << "term2val called on a non atomic term " << t->tostr() << endl;
+            exit(1);
+        }
+        if constexpr ( is_integral<T>::value )
+        {
+            if ( t->isInt() ) return AS(T,t);
+            else
+            {
+                cout << "Sought as int " << t->tostr() << endl;
+                exit(1);
+            }
+        }
+        if constexpr ( is_floating_point<T>::value )
+        {
+            if ( t->isFloat() ) return AS(T,t);
+            else
+            {
+                cout << "Sought as float " << t->tostr() << endl;
+                exit(1);
+            }
+        }
+        if constexpr ( is_same<string,T>::value )
+        {
+            if ( t->isString() ) return AS(T,t);
+            else
+            {
+                cout << "Sought as string " << t->tostr() << endl;
+                exit(1);
+            }
+        }
+    }
+    template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *t,  int pos=0)
+    {
+        auto args = t->args();
+        if ( pos >= args.size() )
+        {
+            cout << "Arg " << pos << " sought from term of arity " << args.size() << " : " << t->tostr() << endl;
+            exit(1);
+        }
+        tuple<T> t0 = { term2val<T>( args[pos] ) };
+
+        if constexpr ( sizeof...(Ts) == 0 ) return t0;
+        else
+        {
+            tuple<T,Ts...> ts = tuple_cat( t0, term2tuple<Ts...>(t,pos+1) );
+            return ts;
+        }
+    }
+    // terms2tuples API for a given t_predspec
+    // Currently supports only non-nested terms with integer, string atoms
+    template<typename... Ts> void terms2tuples(t_predspec ps, list<tuple<Ts...>>& l)
+    {
+        for(auto t:get(ps)) l.push_back( term2tuple<Ts...>(t) );
+    }
     list<PTerm*>& get(t_predspec ps) { return _termmap[ps]; }
     void dump()
     {
