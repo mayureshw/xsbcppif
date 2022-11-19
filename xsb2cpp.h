@@ -132,7 +132,6 @@ class PDb
         PTerm *retterm =
             is_string(pt) ? new PAtom<string>(p2c_string(pt)) :
             is_int(pt) ? new PAtom<int>(p2c_int(pt)) :
-            is_float(pt) ? new PAtom<float>(p2c_float(pt)) :
             (PTerm*) NULL;
 
         if ( ! retterm )
@@ -151,12 +150,12 @@ class PDb
             argv.push_back(pt2cpp(p2p_arg(pt,i)));
         return new PTerm(functor, argv);
     }
-    // BEWARE: XSB uses $BOX$ to represent floats
     // TODO: What if pt is list in the top call?
     PTerm* pt2cpp(prolog_term pt)
     {
-        return is_functor(pt) ? pt2cpp_term(pt) :
-            is_list(pt) ? pt2cpp_list(pt) : pt2cpp_atom(pt);
+        // float needs to be dealt with specially as it is modeled as a term in XSB
+        return is_float(pt) ?  new PAtom<float>(p2c_float(pt)) :
+            is_functor(pt) ? pt2cpp_term(pt) : is_list(pt) ? pt2cpp_list(pt) : pt2cpp_atom(pt);
     }
     void loadpred(t_predspec ps)
     {
@@ -178,11 +177,11 @@ class PDb
         cout << "Got " << _termmap[ps].size() << " entries" << endl;
     }
 public:
-    template<typename T> T term2val(PTerm* t)
+    template<typename T> T atom2val(PTerm* t)
     {
         if ( not t->isAtom() )
         {
-            cout << "term2val called on a non atomic term " << t->tostr() << endl;
+            cout << "atom2val called on a non atomic term " << t->tostr() << endl;
             exit(1);
         }
         if constexpr ( is_integral<T>::value )
@@ -213,28 +212,42 @@ public:
             }
         }
     }
-    template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *t,  int pos=0)
+    template<typename T, typename... Ts> tuple<T,Ts...> args2tuple(PTerm *term, int pos)
     {
-        auto args = t->args();
-        if ( pos >= args.size() )
+        auto postuple =  term2tuple<T>(term->args()[pos]);
+        if constexpr ( sizeof...(Ts) == 0 ) return postuple;
+        else return tuple_cat( postuple, args2tuple<Ts...>(term, pos+1) );
+    }
+    template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *term)
+    {
+        if constexpr ( sizeof...(Ts) == 0 )
         {
-            cout << "Arg " << pos << " sought from term of arity " << args.size() << " : " << t->tostr() << endl;
-            exit(1);
+            tuple<T> t = { atom2val<T>(term) };
+            return t;
         }
-        tuple<T> t0 = { term2val<T>( args[pos] ) };
-
-        if constexpr ( sizeof...(Ts) == 0 ) return t0;
         else
         {
-            tuple<T,Ts...> ts = tuple_cat( t0, term2tuple<Ts...>(t,pos+1) );
-            return ts;
+            static_assert( is_same<T,string>::value ); // functor name always a string
+            auto typarity = sizeof...(Ts);
+            auto termarity = term->args().size();
+            if ( termarity != typarity )
+            {
+                cout << "term2tuple arity mismatch termarity=" << termarity << " typarity=" << typarity << endl;
+                exit(1);
+            }
+            return tuple_cat( make_tuple( term->functor() ), args2tuple<Ts...>(term, 0) );
         }
     }
-    // terms2tuples API for a given t_predspec
-    // Currently supports only non-nested terms with integer, string atoms
-    template<typename... Ts> void terms2tuples(t_predspec ps, list<tuple<Ts...>>& l)
+    // Helper function to deduce template argument types to pass them further
+    template<typename... Ts> void _terms2tuples( t_predspec ps, list<tuple<Ts...>>& l )
     {
-        for(auto t:get(ps)) l.push_back( term2tuple<Ts...>(t) );
+        for(auto term:get(ps)) l.push_back( term2tuple<Ts...>(term) );
+    }
+    template<typename T> list<T> terms2tuples(t_predspec ps)
+    {
+        list<T> l;
+        _terms2tuples(ps, l);
+        return l;
     }
     list<PTerm*>& get(t_predspec ps) { return _termmap[ps]; }
     void dump()
