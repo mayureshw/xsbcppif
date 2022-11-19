@@ -218,12 +218,22 @@ public:
         if constexpr ( sizeof...(Ts) == 0 ) return postuple;
         else return tuple_cat( postuple, args2tuple<Ts...>(term, pos+1) );
     }
+    // helper function to deduce tuple argument types using a dummy argument
+    template<typename... Ts> tuple<Ts...> _term2tuple(PTerm* term, tuple<Ts...>)
+    {
+        return term2tuple<Ts...>(term);
+    }
     template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *term)
     {
         if constexpr ( sizeof...(Ts) == 0 )
         {
-            tuple<T> t = { atom2val<T>(term) };
-            return t;
+            if constexpr ( is_floating_point<T>::value or is_integral<T>::value or is_same<string,T>::value )
+                return make_tuple( atom2val<T>(term) );
+            else
+            {
+                T dummyt;
+                return _term2tuple(term, dummyt);
+            }
         }
         else
         {
