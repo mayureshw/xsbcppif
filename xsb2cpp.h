@@ -26,14 +26,15 @@ public:
     virtual bool isFloat() { return false; }
     virtual bool isString() { return false; }
     string functor() { return _f; }
+    int arity() { return _args.size(); }
     vector<PTerm*>& args() { return _args; }
     virtual string tostr()
     {
         string retstr = _f + "(";
-        for(unsigned i = 0; i < _args.size(); i++)
+        for(unsigned i = 0; i < arity(); i++)
         {
             retstr += _args[i]->tostr();
-            if ( i < _args.size() - 1 ) retstr += ",";
+            if ( i < arity() - 1 ) retstr += ",";
         }
         retstr += ")";
         return retstr;
@@ -239,7 +240,7 @@ public:
         {
             static_assert( is_same<T,string>::value ); // functor name always a string
             auto typarity = sizeof...(Ts);
-            auto termarity = term->args().size();
+            auto termarity = term->arity();
             if ( termarity != typarity )
             {
                 cout << "term2tuple arity mismatch termarity=" << termarity << " typarity=" << typarity << endl;
