@@ -97,19 +97,19 @@ public:
     int asInt()
     {
         if constexpr ( is_arithmetic<T> :: value )  return (int) _a;
-        cout << "xsb2cpp: string sought as int" << _a << endl;
+        cout << "xsb2cpp: string sought as int " << _a << endl;
         exit(1);
     }
     float asFloat()
     {
         if constexpr ( is_arithmetic<T> :: value )  return (float) _a;
-        cout << "xsb2cpp: string sought as float" << _a << endl;
+        cout << "xsb2cpp: string sought as float " << _a << endl;
         exit(1);
     }
     string asString()
     {
         if constexpr ( is_same<T,string> :: value ) return _a;
-        cout << "xsb2cpp: non string sought as string" << _a << endl;
+        cout << "xsb2cpp: non string sought as string " << _a << endl;
         exit(1);
     }
     T get() { return _a; }
