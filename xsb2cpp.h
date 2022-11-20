@@ -25,6 +25,21 @@ public:
     virtual bool isInt() { return false; }
     virtual bool isFloat() { return false; }
     virtual bool isString() { return false; }
+    virtual int asInt()
+    {
+        cout << "xsb2cpp asInt sought on non-atom" << endl;
+        exit(1);
+    }
+    virtual float asFloat()
+    {
+        cout << "xsb2cpp asFloat sought on non-atom" << endl;
+        exit(1);
+    }
+    virtual string asString()
+    {
+        cout << "xsb2cpp asString sought on non-atom" << endl;
+        exit(1);
+    }
     string functor() { return _f; }
     int arity() { return _args.size(); }
     vector<PTerm*>& args() { return _args; }
@@ -79,6 +94,24 @@ public:
     bool isFloat() { if constexpr ( is_same<T, float> :: value ) return true; else return false; }
     bool isString() { if constexpr ( is_same<T, string> :: value ) return true; else return false; }
     virtual bool isAtom() { return true; }
+    int asInt()
+    {
+        if constexpr ( is_arithmetic<T> :: value )  return (int) _a;
+        cout << "xsb2cpp: string sought as int" << _a << endl;
+        exit(1);
+    }
+    float asFloat()
+    {
+        if constexpr ( is_arithmetic<T> :: value )  return (float) _a;
+        cout << "xsb2cpp: string sought as float" << _a << endl;
+        exit(1);
+    }
+    string asString()
+    {
+        if constexpr ( is_same<T,string> :: value ) return _a;
+        cout << "xsb2cpp: non string sought as string" << _a << endl;
+        exit(1);
+    }
     T get() { return _a; }
     string tostr() { return _tostr(_a); }
     PAtom(T a) : PTerm(_tostr(a)), _a(a) {}
@@ -178,40 +211,13 @@ class PDb
         cout << "Got " << _termmap[ps].size() << " entries" << endl;
     }
 public:
-    template<typename T> T atom2val(PTerm* t)
+    template<typename T> static T atom2val(PTerm* t)
     {
-        if ( not t->isAtom() )
-        {
-            cout << "atom2val called on a non atomic term " << t->tostr() << endl;
-            exit(1);
-        }
-        if constexpr ( is_integral<T>::value )
-        {
-            if ( t->isInt() ) return AS(T,t);
-            else
-            {
-                cout << "Sought as int " << t->tostr() << endl;
-                exit(1);
-            }
-        }
-        if constexpr ( is_floating_point<T>::value )
-        {
-            if ( t->isFloat() ) return AS(T,t);
-            else
-            {
-                cout << "Sought as float " << t->tostr() << endl;
-                exit(1);
-            }
-        }
-        if constexpr ( is_same<string,T>::value )
-        {
-            if ( t->isString() ) return AS(T,t);
-            else
-            {
-                cout << "Sought as string " << t->tostr() << endl;
-                exit(1);
-            }
-        }
+        if constexpr ( is_integral<T>::value ) return (T) t->asInt();
+        if constexpr ( is_floating_point<T>::value ) return (T) t->asFloat();
+        if constexpr ( is_same<string,T>::value ) return t->asString();
+        cout << "xsb2cpp atom2val: unsupported type" << endl;
+        exit(1);
     }
     template<typename T, typename... Ts> tuple<T,Ts...> args2tuple(PTerm *term, int pos)
     {
