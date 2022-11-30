@@ -120,7 +120,8 @@ public:
 typedef pair<string,unsigned> t_predspec;
 class PDb
 {
-    map<t_predspec,list<PTerm*>> _termmap;
+    map<t_predspec,list<PTerm*>> _pstermmap;
+    map<string,list<PTerm*>> _strtermmap;
     void initxsb()
     {
         char *xsbargv[] = { getenv("XSBDIR") };
@@ -205,10 +206,28 @@ class PDb
             // We use (1). We could have thrown away the functor as it
             // repeats, but need something to bind together the args anyway
             auto pt = pt2cpp( reg_term(1) );
-            _termmap[ps].push_back(pt);
+            _pstermmap[ps].push_back(pt);
             retval = xsb_next();
         }
-        cout << "Got " << _termmap[ps].size() << " entries" << endl;
+        cout << "Got " << _pstermmap[ps].size() << " entries" << endl;
+    }
+    void loadpred(string str)
+    {
+        cout << "Querying " << str << "..." << endl;
+        int retval = xsb_query_string((char*)str.c_str());
+        while ( ! retval )
+        {
+            auto pt = pt2cpp( reg_term(1) );
+            _strtermmap[str].push_back(pt);
+            retval = xsb_next();
+        }
+    }
+    template <typename T> void _call(string modulename, vector<T> pspecs)
+    {
+        initxsb();
+        consult(modulename);
+        for(auto ps:pspecs) loadpred(ps);
+        closexsb();
     }
 public:
     template<typename T> static T atom2val(PTerm* t)
@@ -266,15 +285,23 @@ public:
         _terms2tuples(ps, l);
         return l;
     }
-    list<PTerm*>& get(t_predspec ps) { return _termmap[ps]; }
+    list<PTerm*>& get(t_predspec ps) { return _pstermmap[ps]; }
+    list<PTerm*>& get(string str) { return _strtermmap[str]; }
     void dump()
     {
-        for(auto ftermspairs:_termmap)
+        for(auto ftermspairs:_pstermmap)
         {
             auto functor = ftermspairs.first.first;
             auto arity = ftermspairs.first.second;
             cout << functor << "/" << arity << endl;
             for(auto term:ftermspairs.second)
+                cout << "\t" << term->tostr() << endl;
+        }
+        for(auto strtermpairs:_strtermmap)
+        {
+            auto str = strtermpairs.first;
+            cout << str << endl;
+            for(auto term:strtermpairs.second)
                 cout << "\t" << term->tostr() << endl;
         }
     }
@@ -285,17 +312,21 @@ public:
         for(auto ps:pspecs) loadpred(ps);
         closexsb();
     }
-    void call(string modulename, vector<t_predspec> pspecs)
+    void callSpec(string modulename, vector<t_predspec> pspecs)
     {
-        initxsb();
-        consult(modulename);
-        for(auto ps:pspecs) loadpred(ps);
-        closexsb();
+        _call<t_predspec>(modulename, pspecs);
+    }
+    void callStr(string modulename, vector<string> pstrs)
+    {
+        _call<string>(modulename, pstrs);
     }
     ~PDb()
     {
-        for(auto ftermspairs:_termmap)
+        for(auto ftermspairs:_pstermmap)
             for(auto term:ftermspairs.second)
+                delete term;
+        for(auto strtermpairs:_strtermmap)
+            for(auto term:strtermpairs.second)
                 delete term;
     }
 };

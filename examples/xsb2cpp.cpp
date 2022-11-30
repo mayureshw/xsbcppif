@@ -16,7 +16,7 @@ int main()
 
     // Consult module "module.P" and invoke pred/2 from it
     // and return the results
-    db.call("module",{{"pred",2}});
+    db.callSpec("module",{{"pred",2}});
 
     // Convert read data to C++ list of tuples
     db.load("tdat",{{"t",3}});
@@ -28,6 +28,8 @@ int main()
     auto ntl = db.terms2tuples<ntuptyp>({"nt",1});
     cout << "Read tuples " << ntl.size() << endl;
     for(auto t:ntl) cout << get<0>(t) << "(" << get<0>(get<1>(t)) << "(" << get<1>(get<1>(t)) << ")" << endl;
+
+    db.callStr("module",{"d(1,X)."});
 
     // Dump the data loaded. Please browse this function in xsb2cpp.h to see
     // how to access the loaded predicates in your application.
