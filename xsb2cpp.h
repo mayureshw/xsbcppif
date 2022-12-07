@@ -17,6 +17,7 @@
 
 class PTerm
 {
+protected:
     const string _f;
     vector<PTerm*> _args;
 public:
@@ -61,24 +62,22 @@ public:
 
 class PList : public PTerm
 {
-    vector<PTerm*> _v;
 public:
     virtual bool isList() { return true; }
     string tostr()
     {
         string retstr = "[";
-        for(unsigned i = 0; i < _v.size(); i++)
+        for(unsigned i = 0; i < _args.size(); i++)
         {
-            retstr += _v[i]->tostr();
-            if ( i < _v.size() - 1 ) retstr += ",";
+            retstr += _args[i]->tostr();
+            if ( i < _args.size() - 1 ) retstr += ",";
         }
         retstr += "]";
         return retstr;
     }
     // We slightly deviate, instead of ./2 we use arity 0
     // Avoid interpreting "." functor's arity
-    PList(vector<PTerm*> v) : PTerm("."), _v(v) {}
-    ~PList() { for(auto e:_v) delete e; }
+    PList(vector<PTerm*> v) : PTerm(".",v) {}
 };
 
 template <typename T> class PAtom : public PTerm
