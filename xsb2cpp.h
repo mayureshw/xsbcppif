@@ -20,8 +20,19 @@ class PTerm
 protected:
     const string _f;
     vector<PTerm*> _args;
+    string args2str()
+    {
+        string retstr;
+        for(unsigned i = 0; i < _args.size(); i++)
+        {
+            retstr += _args[i]->tostr();
+            if ( i < _args.size() - 1 ) retstr += ",";
+        }
+        return retstr;
+    }
 public:
     virtual bool isList() { return false; }
+    virtual bool isTuple() { return false; }
     virtual bool isAtom() { return false; }
     virtual bool isInt() { return false; }
     virtual bool isFloat() { return false; }
@@ -63,21 +74,27 @@ public:
 class PList : public PTerm
 {
 public:
-    virtual bool isList() { return true; }
+    bool isList() { return true; }
     string tostr()
     {
-        string retstr = "[";
-        for(unsigned i = 0; i < _args.size(); i++)
-        {
-            retstr += _args[i]->tostr();
-            if ( i < _args.size() - 1 ) retstr += ",";
-        }
-        retstr += "]";
+        string retstr = "[" + args2str() + "]";
         return retstr;
     }
     // We slightly deviate, instead of ./2 we use arity 0
     // Avoid interpreting "." functor's arity
     PList(vector<PTerm*> v) : PTerm(".",v) {}
+};
+
+class PTuple : public PTerm
+{
+public:
+    bool isTuple() { return true; }
+    string tostr()
+    {
+        string retstr = "(" + args2str() + ")";
+        return retstr;
+    }
+    PTuple(vector<PTerm*> v) : PTerm(",",v) {}
 };
 
 template <typename T> class PAtom : public PTerm
@@ -92,7 +109,7 @@ public:
     bool isInt() { if constexpr ( is_same<T, int> :: value ) return true; else return false; }
     bool isFloat() { if constexpr ( is_same<T, float> :: value ) return true; else return false; }
     bool isString() { if constexpr ( is_same<T, string> :: value ) return true; else return false; }
-    virtual bool isAtom() { return true; }
+    bool isAtom() { return true; }
     int asInt()
     {
         if constexpr ( is_arithmetic<T> :: value )  return (int) _a;
@@ -161,10 +178,32 @@ class PDb
         } while ( is_list(pt) );
         return new PList(v);
     }
+    PTerm* pt2cpp_tuple(prolog_term pt)
+    {
+        vector<PTerm*> v;
+        auto curpt = pt;
+        while( true )
+        {
+            auto arg0 = p2p_arg(curpt,1);
+            auto arg1 = p2p_arg(curpt,2);
+            v.push_back(pt2cpp(arg0));
+            if ( is_functor(arg1) and string(p2c_functor(arg1)) == string(",") ) curpt = arg1;
+            else
+            {
+                v.push_back(pt2cpp(arg1));
+                break;
+            }
+        }
+        return new PTuple(v);
+    }
     PTerm* pt2cpp_atom(prolog_term pt)
     {
+        // Note: XSB models empty list as an atom, we convert it to PList here
         PTerm *retterm =
-            is_string(pt) ? new PAtom<string>(p2c_string(pt)) :
+            is_string(pt) ?
+                ( string(p2c_string(pt)) == string("[]") ? (PTerm*) new PList({}) :
+                  (PTerm*) new PAtom<string>(p2c_string(pt))
+                ) :
             is_int(pt) ? new PAtom<int>(p2c_int(pt)) :
             (PTerm*) NULL;
 
@@ -177,7 +216,9 @@ class PDb
     }
     PTerm* pt2cpp_term(prolog_term pt)
     {
+        // Note: If the functor is "," we create a flat PTuple, instead of ,/2 nested terms
         auto functor = p2c_functor(pt);
+        if ( string(functor) == string(",") ) return pt2cpp_tuple(pt);
         unsigned arity = p2c_arity(pt);
         vector<PTerm*> argv;
         for(unsigned i=1; i<=arity; i++)
@@ -248,12 +289,27 @@ public:
     {
         return term2tuple<Ts...>(term);
     }
+    template<typename T> list<T> _term2tuple(PTerm* term, list<T>)
+    {
+        if ( not term->isList() )
+        {
+            cout << "term2tuple: non list sought as list " << term->tostr() << endl;
+            exit(1);
+        }
+        list<T> l;
+        for( auto elem : term->args() )
+        {
+            auto etup = term2tuple<T>(elem);
+            l.push_back( std::get<0>(etup) );
+        }
+        return l;
+    }
     template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *term)
     {
         if constexpr ( sizeof...(Ts) == 0 )
         {
             if constexpr ( is_floating_point<T>::value or is_integral<T>::value or is_same<string,T>::value )
-                return make_tuple( atom2val<T>(term) );
+                return atom2val<T>(term);
             else
             {
                 T dummyt;
@@ -267,7 +323,7 @@ public:
             auto termarity = term->arity();
             if ( termarity != typarity )
             {
-                cout << "term2tuple arity mismatch termarity=" << termarity << " typarity=" << typarity << endl;
+                cout << "term2tuple arity mismatch termarity=" << termarity << " typarity=" << typarity << " " << term->tostr() << endl;
                 exit(1);
             }
             return tuple_cat( make_tuple( term->functor() ), args2tuple<Ts...>(term, 0) );
