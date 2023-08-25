@@ -37,6 +37,7 @@ public:
     virtual bool isInt() { return false; }
     virtual bool isFloat() { return false; }
     virtual bool isString() { return false; }
+    bool isGeneralTerm() { return not( isList() or isTuple() or isAtom() ); }
     virtual int asInt()
     {
         cout << "xsb2cpp asInt sought on non-atom" << endl;
@@ -270,69 +271,74 @@ class PDb
         closexsb();
     }
 public:
-    template<typename T> static T atom2val(PTerm* t)
+    template<typename T, typename... Ts> void args2tuple(PTerm *term, tuple<T,Ts...>& ret, int pos=0)
     {
-        if constexpr ( is_integral<T>::value ) return (T) t->asInt();
-        if constexpr ( is_floating_point<T>::value ) return (T) t->asFloat();
-        if constexpr ( is_same<string,T>::value ) return t->asString();
-        cout << "xsb2cpp atom2val: unsupported type" << endl;
-        exit(1);
+        auto argtoprocess = term->args()[pos];
+        T t;
+        term2tuple(argtoprocess, t);
+        tuple<T> tt = make_tuple(t);
+        if constexpr ( sizeof...(Ts) == 0 ) ret = tt;
+        else
+        {
+            tuple<Ts...> trest;
+            args2tuple( term, trest, pos+1 );
+            ret = tuple_cat( tt, trest );
+        }
     }
-    template<typename T, typename... Ts> tuple<T,Ts...> args2tuple(PTerm *term, int pos)
+    // term2tuple is an overloaded function with disambiguation by parameter
+    // instead of a dummy parameter we use the same parameter to return value
+    // Variant 1: Prolog terms and Prolog tuples to C++ tuples
+    template<typename T, typename... Ts> void term2tuple(PTerm *term, tuple<T,Ts...>& ret)
     {
-        auto postuple =  term2tuple<T>(term->args()[pos]);
-        if constexpr ( sizeof...(Ts) == 0 ) return postuple;
-        else return tuple_cat( postuple, args2tuple<Ts...>(term, pos+1) );
+        if ( not( term->isGeneralTerm() or term->isTuple() ) )
+        {
+            cout << "xsb2cpp: Non tuple, non term sought as tuple: " << term->tostr() << endl;
+            exit(1);
+        }
+        if ( term->isGeneralTerm() )
+        {
+            static_assert( is_same<T,string>::value ); // functor name always a string
+            tuple<Ts...> argst;
+            args2tuple(term, argst);
+            ret = tuple_cat( make_tuple( term->functor() ), argst );
+        }
+        else args2tuple(term, ret);
     }
-    // helper function to deduce tuple argument types using a dummy argument
-    template<typename... Ts> tuple<Ts...> _term2tuple(PTerm* term, tuple<Ts...>)
-    {
-        return term2tuple<Ts...>(term);
-    }
-    template<typename T> list<T> _term2tuple(PTerm* term, list<T>)
+    // Variant 2: Prolog lists to C++ lists
+    template<typename T> void term2tuple(PTerm *term, list<T>& ret)
     {
         if ( not term->isList() )
         {
-            cout << "term2tuple: non list sought as list " << term->tostr() << endl;
+            cout << "xsb2cpp: Non list sought as list: " << term->tostr() << endl;
             exit(1);
         }
-        list<T> l;
-        for( auto elem : term->args() )
+        for(auto e:term->args())
         {
-            auto etup = term2tuple<T>(elem);
-            l.push_back( std::get<0>(etup) );
+            T et;
+            term2tuple(e,et);
+            ret.push_back(et);
         }
-        return l;
     }
-    template<typename T, typename... Ts> tuple<T,Ts...> term2tuple(PTerm *term)
+    // Variant 3: Prolog atoms to C++ types
+    template<typename T> void term2tuple(PTerm *term, T& ret)
     {
-        if constexpr ( sizeof...(Ts) == 0 )
-        {
-            if constexpr ( is_floating_point<T>::value or is_integral<T>::value or is_same<string,T>::value )
-                return atom2val<T>(term);
-            else
-            {
-                T dummyt;
-                return _term2tuple(term, dummyt);
-            }
-        }
+        if constexpr ( is_integral<T>::value ) ret = (T) term->asInt();
+        else if constexpr ( is_floating_point<T>::value ) ret = (T) term->asFloat();
+        else if constexpr ( is_same<string,T>::value ) ret = term->asString();
         else
         {
-            static_assert( is_same<T,string>::value ); // functor name always a string
-            auto typarity = sizeof...(Ts);
-            auto termarity = term->arity();
-            if ( termarity != typarity )
-            {
-                cout << "term2tuple arity mismatch termarity=" << termarity << " typarity=" << typarity << " " << term->tostr() << endl;
-                exit(1);
-            }
-            return tuple_cat( make_tuple( term->functor() ), args2tuple<Ts...>(term, 0) );
+            cout << "xsb2cpp: Non atom sought as atom: " << term->tostr() << endl;
+            exit(1);
         }
     }
-    // Helper function to deduce template argument types to pass them further
     template<typename... Ts> void _terms2tuples( t_predspec ps, list<tuple<Ts...>>& l )
     {
-        for(auto term:get(ps)) l.push_back( term2tuple<Ts...>(term) );
+        for(auto term:get(ps))
+        {
+            tuple<Ts...> t;
+            term2tuple(term, t);
+            l.push_back( t );
+        }
     }
     template<typename T> list<T> terms2tuples(t_predspec ps)
     {
